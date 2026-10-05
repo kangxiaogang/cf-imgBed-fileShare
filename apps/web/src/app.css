@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+@layer base {
+  html {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+
+  /*
+   * Anything a pointer can activate says so.
+   *
+   * Tailwind's preflight leaves `cursor: default` on `<button>`, so the bare buttons here
+   * — the lightbox's close mark, a gallery tile, the upload mode tabs, the filename link in
+   * the list, the remove button in the file picker — all read as non-interactive while being
+   * the most interactive things on the page. Adding the utility per call site would be a
+   * dozen places to keep in sync; the rule below cannot be forgotten at a new one.
+   *
+   * `@layer base` is below `@layer components`, so `.btn`'s own `cursor-pointer` and
+   * `disabled:cursor-not-allowed` still win where they apply.
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  summary,
+  label:has(> input[type="checkbox"], > input[type="radio"]),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    @apply cursor-not-allowed;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white p-5;
+  }
+  .card-title {
+    @apply mb-4 text-base font-semibold text-slate-800;
+  }
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-sky-600 bg-sky-600 text-white hover:bg-sky-700 hover:border-sky-700;
+  }
+  .btn-ghost {
+    @apply border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply border-rose-300 bg-white text-rose-600 hover:bg-rose-50;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1.5 text-xs;
+  }
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-slate-700;
+  }
+  .hint {
+    @apply mt-1 text-xs text-slate-500;
+  }
+  .table-th {
+    @apply px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-slate-500;
+  }
+  .table-td {
+    @apply px-3 py-2.5 text-sm text-slate-700;
+  }
+  .flash-ok {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
+  }
+  .flash-error {
+    @apply border-rose-200 bg-rose-50 text-rose-700;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600;
+  }
+}

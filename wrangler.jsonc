@@ -1,0 +1,27 @@
+{
+	"name": "picoshare",
+	"main": "apps/worker/src/index.ts",
+	"compatibility_date": "2026-09-28",
+	"assets": {
+		"directory": "./apps/web/dist",
+		"binding": "ASSETS"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "picoshare_db",
+			"database_id": "20e26b48-6bdf-4afc-b19d-35fa18cc0d02"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "picoshare-files"
+		}
+	],
+	"triggers": {
+		"crons": [
+			"0 * * * *"
+		]
+	}
+}

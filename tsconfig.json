@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext"],
+    // `node` is only for the test files (node:sqlite drives the contract tests against the
+    // real schema). The worker sources stay on the Workers globals.
+    "types": ["@cloudflare/workers-types", "node"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true
+  },
+  "include": ["apps/worker/src/**/*.ts", "apps/worker/tests/**/*.ts", "packages/shared/src/**/*.ts"]
+}

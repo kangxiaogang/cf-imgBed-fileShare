@@ -1,0 +1,142 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # 不带提交手动重发，用于 Cloudflare 侧故障
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同一分支只保留最新一次；main 不取消，否则可能打断正在进行的部署
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: 类型检查与单元测试
+        run: |
+          pnpm typecheck
+          pnpm test
+
+      - name: schema.sql 可重复执行
+        # -bail 必须加：sqlite3 默认遇到 SQL 错误只打印一行并继续，退出码仍是 0
+        run: |
+          rm -f /tmp/ci.sqlite
+          sqlite3 -bail /tmp/ci.sqlite < schema.sql
+          sqlite3 -bail /tmp/ci.sqlite < schema.sql
+          test "$(sqlite3 /tmp/ci.sqlite 'PRAGMA integrity_check;')" = ok
+
+      - name: .dev.vars 不能入库
+        run: git ls-files --error-unmatch .dev.vars && exit 1 || true
+
+      - name: 构建前端
+        run: |
+          pnpm build
+          test -f apps/web/dist/index.html
+
+      # 部署直接用这份产物，不再重新构建，保证上线的就是测过的字节
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist
+          retention-days: 7
+
+      - name: 冒烟（真实运行时）
+        # 单元测试全是 mock，跑不到 workerd、ASSETS 绑定和路由顺序，这里补上
+        env:
+          SECRET: ci-smoke-secret
+          BASE: http://127.0.0.1:8787
+        run: |
+          status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          json() { node -p 'JSON.parse(require("fs").readFileSync(0, "utf8"))["'"$1"'"]'; }
+          expect() { [ "$2" = "$3" ] || { echo "::error::$1：期望 $2，实际 $3"; exit 1; }; }
+
+          printf 'PS_SHARED_SECRET=%s\n' "$SECRET" > .dev.vars
+          pnpm d1:init
+          nohup pnpm exec wrangler dev --port 8787 > /tmp/wrangler.log 2>&1 &
+          trap 'cat /tmp/wrangler.log' EXIT
+
+          for _ in $(seq 1 60); do
+            case "$(status "$BASE/api/settings")" in 200 | 401) break ;; esac
+            sleep 2
+          done
+
+          expect "无密钥应被拒绝" 401 "$(status "$BASE/api/settings")"
+          expect "带密钥应放行" 200 "$(status -H "Authorization: $SECRET" "$BASE/api/settings")"
+
+          printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' | base64 -d > /tmp/px.png
+          up=$(curl -s -H "Authorization: $SECRET" -F "file=@/tmp/px.png;type=image/png" "$BASE/api/entry")
+          entry=$(printf '%s' "$up" | json id) || { echo "::error::上传失败：$up"; exit 1; }
+
+          # 直链首段是 share id，entry id 必须打不开
+          expect "entry id 不能当直链用" 404 "$(status "$BASE/img/$entry/px.png")"
+          h=$(curl -s -D - -o /dev/null "$(printf '%s' "$up" | json url)")
+          for w in "200 OK" "content-disposition: inline" "x-content-type-options: nosniff"; do
+            printf '%s' "$h" | tr 'A-Z' 'a-z' | grep -qi "$(printf '%s' "$w" | tr 'A-Z' 'a-z')" ||
+              { echo "::error::直链响应缺少 $w"; exit 1; }
+          done
+
+          share=$(curl -s -X POST -H "Authorization: $SECRET" -H "Content-Type: application/json" \
+            -d '{}' "$BASE/api/entry/$entry/shares" | json id)
+          expect "下载应成功" 200 "$(curl -s -o /tmp/got.png -w '%{http_code}' "$BASE/-$share")"
+          cmp -s /tmp/px.png /tmp/got.png || { echo "::error::下载内容与上传不一致"; exit 1; }
+
+          expect "首页应返回 SPA" 200 "$(status "$BASE/")"
+          echo "冒烟通过：entry=$entry share=$share"
+
+  deploy:
+    needs: ci
+    # on.push 只配了 main，所以任何 push 事件都是 main
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # 不允许并发：两次部署会互相覆盖
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment: production
+    # 密钥只在这里出现一次；PS_SHARED_SECRET 故意不给，它用 wrangler secret put 单独设置
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist
+
+      - name: 检查凭据
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::缺少仓库密钥 CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::缺少仓库密钥 CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: 建表并部署
+        # schema.sql 幂等，每次部署都跑一遍；它只能加表和索引，不能给已有表加列
+        run: |
+          set -o pipefail
+          pnpm exec wrangler d1 execute DB --remote --file=schema.sql
+          pnpm exec wrangler deploy 2>&1 | tee /tmp/deploy.log
+          grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' /tmp/deploy.log | head -1 >> "$GITHUB_STEP_SUMMARY"

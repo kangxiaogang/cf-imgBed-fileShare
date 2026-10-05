@@ -1,0 +1,31 @@
+{
+  "name": "picoshare",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "pnpm build:web && concurrently -k -n worker,web -c cyan,magenta \"pnpm dev:worker\" \"pnpm dev:web\"",
+    "dev:worker": "wrangler dev",
+    "dev:web": "pnpm --filter @picoshare/web dev",
+    "build": "pnpm build:web",
+    "build:web": "pnpm --filter @picoshare/web build",
+    "deploy": "pnpm build:web && wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @picoshare/web check",
+    "test": "vitest run && pnpm --filter @picoshare/web test",
+    "test:watch": "vitest",
+    "d1:init": "wrangler d1 execute DB --local --file=schema.sql",
+    "d1:init:remote": "wrangler d1 execute DB --remote --file=schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260210.0",
+    "@types/node": "^26.6.3",
+    "concurrently": "^9.1.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.64.0"
+  }
+}
