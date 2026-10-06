@@ -130,8 +130,8 @@ jobs:
 
       - name: 检查凭据
         run: |
-          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::缺少仓库密钥 CLOUDFLARE_API_TOKEN"; exit 1; }
-          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::缺少仓库密钥 CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::读不到 CLOUDFLARE_API_TOKEN。在 Settings -> Secrets and variables -> Actions 里添加仓库密钥；若加在 Environments 下，环境名必须是 production（与本任务的 environment 一致）。"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::读不到 CLOUDFLARE_ACCOUNT_ID（Cloudflare 控制台网址里那串 32 位 hex，或 wrangler whoami 的输出）。"; exit 1; }
 
       - name: 建表并部署
         # schema.sql 幂等，每次部署都跑一遍；它只能加表和索引，不能给已有表加列

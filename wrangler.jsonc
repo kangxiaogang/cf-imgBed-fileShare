@@ -9,8 +9,8 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "picoshare_db",
-			"database_id": "20e26b48-6bdf-4afc-b19d-35fa18cc0d02"
+			"database_name": "picoshare-db",
+			"database_id": "482a34c2-212b-4339-80bc-d7331ec4a5ee"
 		}
 	],
 	"r2_buckets": [

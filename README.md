@@ -170,7 +170,7 @@ reproduced from a file that is not in the repository, and this one holds nothing
 | `vars` | `PUBLIC_ORIGIN` only, and only behind a proxy that forwards the original `Host` |
 
 Two values are per-deployment and must be replaced before the first deploy:
-`d1_databases[].database_id` (printed by `npx wrangler d1 create picoshare_db`) and
+`d1_databases[].database_id` (printed by `npx wrangler d1 create picoshare-db`) and
 `r2_buckets[].bucket_name`. Neither is a credential, which is why they can live in the
 repository at all.
 

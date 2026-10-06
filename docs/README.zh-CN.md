@@ -39,7 +39,7 @@ npx wrangler login
 ### 2.1 创建 D1 数据库
 
 ```bash
-npx wrangler d1 create picoshare_db
+npx wrangler d1 create picoshare-db
 ```
 
 执行后会返回 `database_id`，把它写入 `wrangler.jsonc` 的 `d1_databases[].database_id`（该文件已入库，直接改）。
@@ -177,7 +177,7 @@ npx wrangler secret put PS_SHARED_SECRET
 | `vars` | 仅 `PUBLIC_ORIGIN`，且仅在会转发原始 `Host` 的代理之后需要 |
 
 其中两个值因部署而异，首次部署前必须替换：`d1_databases[].database_id`
-（`npx wrangler d1 create picoshare_db` 会打印）与 `r2_buckets[].bucket_name`。两者都不是凭据，
+（`npx wrangler d1 create picoshare-db` 会打印）与 `r2_buckets[].bucket_name`。两者都不是凭据，
 所以才可以放在仓库里。
 
 R2 bucket 名只能包含小写字母、数字和连字符：`picoshare_files` 会被名称校验拒绝，且
@@ -280,7 +280,7 @@ npx wrangler deployments list
 ```
 - 查看远程表结构：
 ```bash
-npx wrangler d1 execute picoshare_db --remote --command "SELECT name FROM sqlite_master WHERE type='table'"
+npx wrangler d1 execute picoshare-db --remote --command "SELECT name FROM sqlite_master WHERE type='table'"
 ```
 
 ## 10. 维护任务
